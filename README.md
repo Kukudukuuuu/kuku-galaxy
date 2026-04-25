@@ -11,10 +11,10 @@ A 3D interactive universe visualization inside a Japanese tatami room.
 
 ## Buttons
 
-- **☽ Night / ☀ Day** - Toggle day/night mode
-- **⊞ Top View / ⊟ Side View** - Toggle camera perspective
-- **♪ Sound On / ♩ Sound Off** - Toggle ambient audio
-- **◎ Reset** - Reset camera to default view
+- ** Night / Day** - Toggle day/night mode
+- ** Top View /  Side View** - Toggle camera perspective
+- ** Sound On /  Sound Off** - Toggle ambient audio
+- ** Reset** - Reset camera to default view
 
 ## Features
 
