@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tatami Galaxy Explorer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;600&family=Shippori+Mincho:wght@400;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0612;
+    overflow: hidden;
+    font-family: 'Noto Serif JP', serif;
+    color: #f0e8d0;
+    cursor: crosshair;
+  }
+
+  #canvas-container {
+    position: fixed;
+    inset: 0;
+  }
+
+  canvas { display: block; }
+
+  /* HUD */
+  #hud {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* Title */
+  #title-bar {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    pointer-events: none;
+    z-index: 20;
+  }
+
+  #title-bar h1 {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 13px;
+    letter-spacing: 0.35em;
+    color: rgba(240,232,208,0.5);
+    text-transform: uppercase;
+    font-weight: 400;
+  }
+
+  #title-bar .jp {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: rgba(240,232,208,0.25);
+    margin-top: 3px;
+    display: block;
+  }
+
+  /* Info Panel */
+  #info-panel {
+    position: fixed;
+    right: 32px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 280px;
+    background: rgba(8, 4, 18, 0.85);
+    border: 1px solid rgba(180, 140, 255, 0.2);
+    border-radius: 2px;
+    padding: 28px 24px;
+    backdrop-filter: blur(20px);
+    display: none;
+    z-index: 30;
+    pointer-events: all;
+  }
+
+  #info-panel.visible { display: block; animation: panelIn 0.4s ease; }
+
+  @keyframes panelIn {
+    from { opacity: 0; transform: translateY(calc(-50% + 12px)); }
+    to { opacity: 1; transform: translateY(-50%); }
+  }
+
+  #info-panel .panel-type {
+    font-size: 9px;
+    letter-spacing: 0.4em;
+    color: rgba(180,140,255,0.7);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  #info-panel h2 {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: #f0e8d0;
+    margin-bottom: 4px;
+    line-height: 1.2;
+  }
+
+  #info-panel .subtitle {
+    font-size: 11px;
+    color: rgba(180,140,255,0.6);
+    letter-spacing: 0.15em;
+    margin-bottom: 18px;
+    display: block;
+  }
+
+  #info-panel .divider {
+    width: 40px;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(180,140,255,0.5), transparent);
+    margin-bottom: 18px;
+  }
+
+  #info-panel .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  #info-panel .stat {
+    background: rgba(180,140,255,0.05);
+    border: 1px solid rgba(180,140,255,0.1);
+    padding: 10px 12px;
+    border-radius: 2px;
+  }
+
+  #info-panel .stat-label {
+    font-size: 8px;
+    letter-spacing: 0.3em;
+    color: rgba(180,140,255,0.5);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  #info-panel .stat-value {
+    font-size: 13px;
+    color: #f0e8d0;
+    font-weight: 600;
+  }
+
+  #info-panel .description {
+    font-size: 12px;
+    line-height: 1.8;
+    color: rgba(240,232,208,0.65);
+    margin-bottom: 20px;
+  }
+
+  #close-panel {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: none;
+    border: 1px solid rgba(180,140,255,0.2);
+    color: rgba(180,140,255,0.5);
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  #close-panel:hover { background: rgba(180,140,255,0.1); color: #f0e8d0; }
+
+  /* Controls */
+  #controls {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    z-index: 20;
+    pointer-events: all;
+  }
+
+  .ctrl-btn {
+    background: rgba(8,4,18,0.7);
+    border: 1px solid rgba(180,140,255,0.2);
+    color: rgba(240,232,208,0.6);
+    padding: 8px 16px;
+    font-family: 'Noto Serif JP', serif;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    cursor: pointer;
+    transition: all 0.25s;
+    text-transform: uppercase;
+    backdrop-filter: blur(10px);
+    border-radius: 1px;
+  }
+
+  .ctrl-btn:hover, .ctrl-btn.active {
+    background: rgba(180,140,255,0.15);
+    border-color: rgba(180,140,255,0.5);
+    color: #f0e8d0;
+  }
+
+  #day-night-btn.day { border-color: rgba(255,200,80,0.4); color: rgba(255,200,80,0.8); }
+  #day-night-btn.day:hover { background: rgba(255,200,80,0.1); }
+
+  /* Hint */
+  #hint {
+    position: fixed;
+    bottom: 72px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    color: rgba(240,232,208,0.25);
+    text-align: center;
+    pointer-events: none;
+    text-transform: uppercase;
+  }
+
+  /* Crosshair dot */
+  #crosshair {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 6px;
+    height: 6px;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  #crosshair::before, #crosshair::after {
+    content: '';
+    position: absolute;
+    background: rgba(180,140,255,0.5);
+    border-radius: 1px;
+  }
+  #crosshair::before { width: 1px; height: 16px; left: 2.5px; top: -5px; }
+  #crosshair::after { width: 16px; height: 1px; top: 2.5px; left: -5px; }
+
+  /* Loading */
+  #loading {
+    position: fixed;
+    inset: 0;
+    background: #0a0612;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: opacity 0.8s ease;
+  }
+
+  #loading h2 {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 28px;
+    letter-spacing: 0.3em;
+    color: #f0e8d0;
+    margin-bottom: 8px;
+  }
+
+  #loading p {
+    font-size: 11px;
+    letter-spacing: 0.4em;
+    color: rgba(180,140,255,0.5);
+    text-transform: uppercase;
+    margin-bottom: 40px;
+  }
+
+  .load-bar {
+    width: 200px;
+    height: 1px;
+    background: rgba(180,140,255,0.15);
+    overflow: hidden;
+  }
+
+  .load-fill {
+    height: 100%;
+    background: linear-gradient(90deg, rgba(180,140,255,0.6), rgba(255,200,80,0.4));
+    width: 0%;
+    transition: width 0.3s;
+  }
+
+  /* Tooltip */
+  #tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: rgba(8,4,18,0.9);
+    border: 1px solid rgba(180,140,255,0.3);
+    padding: 6px 12px;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: rgba(240,232,208,0.8);
+    display: none;
+    z-index: 25;
+    backdrop-filter: blur(10px);
+  }
+
+  /* Scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.04) 2px,
+      rgba(0,0,0,0.04) 4px
+    );
+    pointer-events: none;
+    z-index: 50;
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <h2>畳銀河</h2>
+  <p>Tatami Galaxy Explorer</p>
+  <div class="load-bar"><div class="load-fill" id="load-fill"></div></div>
+</div>
+
+<div id="canvas-container"></div>
+
+<div id="hud">
+  <div id="title-bar">
+    <h1>Tatami Galaxy Explorer</h1>
+    <span class="jp">畳宇宙探検 — 4.5畳の宇宙</span>
+  </div>
+
+  <div id="crosshair"></div>
+
+  <div id="info-panel">
+    <button id="close-panel">✕</button>
+    <div class="panel-type" id="panel-type">Celestial Body</div>
+    <h2 id="panel-name">—</h2>
+    <span class="subtitle" id="panel-subtitle">—</span>
+    <div class="divider"></div>
+    <div class="stats" id="panel-stats"></div>
+    <p class="description" id="panel-desc">—</p>
+  </div>
+
+  <div id="tooltip"></div>
+
+  <div id="hint">Drag to orbit · Scroll to zoom · Click stars & planets</div>
+
+  <div id="controls">
+    <button class="ctrl-btn" id="day-night-btn" onclick="toggleDayNight()">☽ Night</button>
+    <button class="ctrl-btn" id="view-btn" onclick="toggleView()">⊞ Top View</button>
+    <button class="ctrl-btn" id="sound-btn" onclick="toggleSound()">♪ Sound On</button>
+    <button class="ctrl-btn" id="reset-btn" onclick="resetCamera()">◎ Reset</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ─── Celestial Data ──────────────────────────────────────────────────────────
+const CELESTIAL_BODIES = [
+  {
+    id: 'sun', type: 'Star', name: 'Taiyō', subtitle: '太陽 · The Sun',
+    color: 0xffcc44, emissive: 0xff8800, size: 0.18, pos: [0, 2.8, 0],
+    stats: { Distance: '0 AU', Temp: '5,778 K', Mass: '1 M☉', Age: '4.6 Gyr' },
+    desc: 'The heart of this pocket universe. Its golden light filters through the shoji screens at dawn, casting long bamboo shadows across the tatami.',
+    glow: true
+  },
+  {
+    id: 'mars', type: 'Planet', name: 'Kasei', subtitle: '火星 · Mars',
+    color: 0xcc4422, emissive: 0x661100, size: 0.09, pos: [0.9, 2.5, 0.4],
+    stats: { Distance: '1.52 AU', Temp: '−63°C', Moons: '2', Orbit: '687 days' },
+    desc: 'The red wanderer. Ancient Edo astronomers called it Kasei — the Fire Star. Its rust-colored surface reminds scholars of autumn maple leaves.',
+    glow: false
+  },
+  {
+    id: 'jupiter', type: 'Planet', name: 'Mokusei', subtitle: '木星 · Jupiter',
+    color: 0xd4946a, emissive: 0x7a3a1a, size: 0.14, pos: [-0.7, 2.6, 0.8],
+    stats: { Distance: '5.2 AU', Temp: '−145°C', Moons: '95', Mass: '318 M⊕' },
+    desc: 'The great storm planet. Its Great Red Spot has raged for centuries — longer than the oldest samurai castles still standing in Kyoto.',
+    glow: false
+  },
+  {
+    id: 'saturn', type: 'Planet', name: 'Dosei', subtitle: '土星 · Saturn',
+    color: 0xe8d5a3, emissive: 0x6b5a30, size: 0.11, pos: [0.3, 2.9, -0.9],
+    stats: { Distance: '9.58 AU', Temp: '−178°C', Rings: 'Yes', Moons: '146' },
+    desc: 'Encircled by rings of ice and stone. The rings catch sunlight like moonlight on the surface of a zen garden pond.',
+    ring: true, glow: false
+  },
+  {
+    id: 'sirius', type: 'Star', name: 'Tenrōsei', subtitle: '天狼星 · Sirius',
+    color: 0xaaddff, emissive: 0x5599ee, size: 0.07, pos: [-1.1, 3.1, -0.5],
+    stats: { Distance: '8.6 ly', Temp: '9,940 K', Luminosity: '25 L☉', Type: 'A1V' },
+    desc: 'The Wolf Star, brightest in the night sky. Heian period court poets wrote verses by its cold blue light during winter poetry gatherings.',
+    glow: true
+  },
+  {
+    id: 'nebula1', type: 'Nebula', name: 'Sakura Nebula', subtitle: '桜星雲 · Cherry Blossom Cloud',
+    color: 0xff88cc, emissive: 0xaa2266, size: 0.08, pos: [0.6, 3.2, 0.7],
+    stats: { Distance: '1,300 ly', Width: '7 ly', Age: '6,500 yr', Type: 'Emission' },
+    desc: 'A nursery of newborn stars. Its rosy hues evoke the fleeting beauty of spring cherry blossoms — born in moments, brilliant for ages.',
+    glow: true
+  },
+  {
+    id: 'moon', type: 'Moon', name: 'Tsuki', subtitle: '月 · The Moon',
+    color: 0xddd8cc, emissive: 0x443322, size: 0.065, pos: [-0.2, 2.4, -0.7],
+    stats: { Distance: '384,400 km', Orbit: '27.3 days', Gravity: '1/6 g', Phases: '8' },
+    desc: 'The eternal companion. Since Heian times, moonviewing — tsukimi — has been a cherished autumn tradition. Tonight it hangs low through the glass dome.',
+    glow: false
+  },
+  {
+    id: 'blackhole', type: 'Anomaly', name: 'Konton', subtitle: '混沌 · The Void',
+    color: 0x220044, emissive: 0x7700ff, size: 0.08, pos: [-0.8, 3.0, 1.0],
+    stats: { Mass: '10 M☉', Radius: '30 km', Hawking: 'Faint', Class: 'Stellar' },
+    desc: 'A wound in spacetime. Buddhist cosmology spoke of mu — nothingness from which all emerges. The void swallows light yet glows at its edge.',
+    glow: true, vortex: true
+  },
+];
+
+// ─── Scene Setup ─────────────────────────────────────────────────────────────
+let scene, camera, renderer, controls;
+let isNight = true, isTopView = false, soundEnabled = false;
+let isIdle = true, idleTime = 0;
+let autoOrbitSpeed = 0.15;
+let clickFocusActive = false;
+let focusTarget = null;
+let audioCtx = null, ambientNodes = [];
+let raycaster, mouse, clickables = [];
+let hoveredObj = null;
+let animFrame, clock;
+let starField, nebulaParticles, shootingStars, asteroidBelt, comet;
+let dayNightLight, galaxyGroup;
+
+// Simple orbit controls
+let isDragging = false, prevMouse = { x: 0, y: 0 };
+let spherical = { theta: 0.4, phi: 1.1, r: 5.5 };
+let targetSpherical = { theta: 0.4, phi: 1.1, r: 5.5 };
+
+function init() {
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x0a0612, 0.04);
+  clock = new THREE.Clock();
+
+  camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 100);
+  updateCameraFromSpherical();
+
+  renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.shadowMap.enabled = false;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.9;
+  document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2();
+
+  buildRoom();
+  buildGalaxy();
+  buildCelestialBodies();
+  buildStarField();
+  buildNebulaParticles();
+  buildShootingStars();
+  buildAsteroidBelt();
+  buildComet();
+  setupLighting();
+  setupEvents();
+
+  animate();
+  finishLoading();
+}
+
+// ─── Loading ─────────────────────────────────────────────────────────────────
+function finishLoading() {
+  const fill = document.getElementById('load-fill');
+  let p = 0;
+  const iv = setInterval(() => {
+    p += Math.random() * 15 + 5;
+    fill.style.width = Math.min(p, 100) + '%';
+    if (p >= 100) {
+      clearInterval(iv);
+      setTimeout(() => {
+        const l = document.getElementById('loading');
+        l.style.opacity = '0';
+        setTimeout(() => l.remove(), 800);
+      }, 400);
+    }
+  }, 80);
+}
+
+// ─── Room ─────────────────────────────────────────────────────────────────────
+function buildRoom() {
+  const roomGroup = new THREE.Group();
+
+  // Floor — tatami
+  const floorGeo = new THREE.PlaneGeometry(5.4, 5.4, 10, 10);
+  const floorCanvas = document.createElement('canvas');
+  floorCanvas.width = 512; floorCanvas.height = 512;
+  const fc = floorCanvas.getContext('2d');
+
+  // 4.5-tatami layout: 2 full mats horizontal top, 2 full mats bottom, half mat center
+  // Draw base
+  fc.fillStyle = '#b8a055';
+  fc.fillRect(0, 0, 1024, 1024);
+
+  // Individual tatami mats with weave texture
+  const drawTatami = (x, y, w, h, horizontal) => {
+    const base = horizontal ? '#c4aa5a' : '#b09840';
+    fc.fillStyle = base;
+    fc.fillRect(x, y, w, h);
+    fc.save();
+    fc.beginPath(); fc.rect(x, y, w, h); fc.clip();
+    // Weave lines
+    const lineColor = horizontal ? 'rgba(180,155,70,0.6)' : 'rgba(140,115,40,0.6)';
+    fc.strokeStyle = lineColor; fc.lineWidth = 1.5;
+    const step = horizontal ? 10 : 14;
+    if (horizontal) {
+      for (let i = x; i < x + w; i += step) {
+        fc.beginPath(); fc.moveTo(i, y); fc.lineTo(i, y + h); fc.stroke();
+      }
+    } else {
+      for (let j = y; j < y + h; j += step) {
+        fc.beginPath(); fc.moveTo(x, j); fc.lineTo(x + w, j); fc.stroke();
+      }
+    }
+    fc.restore();
+  };
+
+  // 4.5 tatami layout
+  drawTatami(4, 4, 508, 342, false);    // top-left (vertical weave)
+  drawTatami(516, 4, 504, 342, true);   // top-right (horizontal weave)
+  drawTatami(4, 350, 508, 340, true);   // bottom-left (horizontal weave)
+  drawTatami(516, 350, 504, 340, false);// bottom-right (vertical weave)
+  // Half mat (center) — slightly different tone
+  fc.fillStyle = '#a89038';
+  fc.fillRect(340, 346, 344, 8);
+  drawTatami(344, 354, 336, 320, true); // center half mat
+
+  // Dark border strips
+  fc.fillStyle = '#2a1a08';
+  fc.fillRect(0, 0, 1024, 4);   // top border
+  fc.fillRect(0, 1020, 1024, 4);
+  fc.fillRect(0, 0, 4, 1024);
+  fc.fillRect(1020, 0, 4, 1024);
+  fc.fillRect(0, 346, 1024, 8);  // horizontal divider
+  fc.fillRect(510, 0, 8, 1024);  // vertical divider
+
+  const tatamiTex = new THREE.CanvasTexture(floorCanvas);
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(5.4, 5.4),
+    new THREE.MeshLambertMaterial({ map: tatamiTex })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.receiveShadow = true;
+  roomGroup.add(floor);
+
+  // ── Walls ──
+  const wallColor = 0xd4c8a8;
+  const wallMat = new THREE.MeshLambertMaterial({ color: wallColor });
+
+  // Back wall (with curtain area)
+  const backWallL = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 2.9), wallMat);
+  backWallL.position.set(-2.1, 1.45, -2.7); backWallL.rotation.y = 0;
+  roomGroup.add(backWallL);
+  const backWallR = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 2.9), wallMat);
+  backWallR.position.set(2.1, 1.45, -2.7);
+  roomGroup.add(backWallR);
+
+  // Left wall (behind bookshelves — darker)
+  const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 2.9),
+    new THREE.MeshLambertMaterial({ color: 0xb8a888 }));
+  leftWall.position.set(-2.7, 1.45, 0);
+  leftWall.rotation.y = Math.PI / 2;
+  roomGroup.add(leftWall);
+
+  // Right wall
+  const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 2.9), wallMat);
+  rightWall.position.set(2.7, 1.45, 0);
+  rightWall.rotation.y = -Math.PI / 2;
+  roomGroup.add(rightWall);
+
+  // Front wall (behind camera — partial)
+  const frontWall = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 2.9),
+    new THREE.MeshLambertMaterial({ color: 0xc8bc9a }));
+  frontWall.position.set(0, 1.45, 2.7);
+  frontWall.rotation.y = Math.PI;
+  roomGroup.add(frontWall);
+
+  // ── Dark wooden structural posts ──
+  const postMat = new THREE.MeshLambertMaterial({ color: 0x1e1008 });
+  const postGeo = new THREE.BoxGeometry(0.1, 2.9, 0.1);
+  [[-2.65,1.45,-2.65],[2.65,1.45,-2.65],[-2.65,1.45,2.65],[2.65,1.45,2.65]].forEach(([x,y,z]) => {
+    const p = new THREE.Mesh(postGeo, postMat); p.position.set(x,y,z); roomGroup.add(p);
+  });
+  // Ceiling beam along back
+  const beamMat = new THREE.MeshLambertMaterial({ color: 0x150c04 });
+  const beamH = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.12, 0.12), beamMat);
+  beamH.position.set(0, 2.84, -2.65); roomGroup.add(beamH);
+  const beamL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 5.4), beamMat);
+  beamL.position.set(-2.65, 2.84, 0); roomGroup.add(beamL);
+
+  // ── Green Patterned Curtains (back wall center) ──
+  buildCurtains(roomGroup);
+
+  // ── Hanging Bare Bulb ──
+  buildHangingBulb(roomGroup);
+
+  // ── Massive Bookshelves (left side) ──
+  buildBookshelves(roomGroup);
+
+  // ── Study Desk (right side) ──
+  buildStudyDesk(roomGroup);
+
+  // ── Old TV + Electronics (floor, left-center) ──
+  buildElectronics(roomGroup);
+
+  // ── Zabuton Cushion ──
+  const zabutonMat = new THREE.MeshLambertMaterial({ color: 0x1a2540 });
+  const zabuton = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.06, 0.55), zabutonMat);
+  zabuton.position.set(0.3, 0.03, 0.8);
+  roomGroup.add(zabuton);
+
+  // ── Books scattered on floor ──
+  buildScatteredBooks(roomGroup);
+
+  scene.add(roomGroup);
+}
+
+function buildCurtains(parent) {
+  // Curtain canvas — green with diamond/lozenge pattern like the anime
+  const cvs = document.createElement('canvas');
+  cvs.width = 256; cvs.height = 512;
+  const ctx = cvs.getContext('2d');
+
+  // Base sage green
+  ctx.fillStyle = '#8fa87a';
+  ctx.fillRect(0, 0, 256, 512);
+
+  // Diamond/lozenge pattern
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.lineWidth = 2;
+  const dw = 48, dh = 48;
+  for (let row = -1; row < 512 / dh + 2; row++) {
+    for (let col = -1; col < 256 / dw + 2; col++) {
+      const cx = col * dw + (row % 2) * (dw / 2);
+      const cy = row * dh;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - dh / 2);
+      ctx.lineTo(cx + dw / 2, cy);
+      ctx.lineTo(cx, cy + dh / 2);
+      ctx.lineTo(cx - dw / 2, cy);
+      ctx.closePath();
+      ctx.stroke();
+    }
+  }
+
+  // Vertical fold shading
+  for (let f = 0; f < 256; f += 32) {
+    const g = ctx.createLinearGradient(f, 0, f + 32, 0);
+    g.addColorStop(0, 'rgba(0,0,0,0.08)');
+    g.addColorStop(0.5, 'rgba(255,255,255,0.04)');
+    g.addColorStop(1, 'rgba(0,0,0,0.08)');
+    ctx.fillStyle = g;
+    ctx.fillRect(f, 0, 32, 512);
+  }
+
+  const curtainTex = new THREE.CanvasTexture(cvs);
+  const curtainMat = new THREE.MeshLambertMaterial({ map: curtainTex, side: THREE.DoubleSide });
+
+  // Two curtain panels
+  [-0.9, 0.9].forEach(xOff => {
+    const panel = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 2.7), curtainMat);
+    panel.position.set(xOff, 1.35, -2.68);
+    parent.add(panel);
+  });
+
+  // Curtain rod
+  const rodMat = new THREE.MeshLambertMaterial({ color: 0x888880 });
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 4, 8), rodMat);
+  rod.rotation.z = Math.PI / 2;
+  rod.position.set(0, 2.75, -2.66);
+  parent.add(rod);
+}
+
+function buildHangingBulb(parent) {
+  // Cord
+  const cordMat = new THREE.MeshLambertMaterial({ color: 0x1a1008 });
+  const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 1.1, 6), cordMat);
+  cord.position.set(0.1, 2.35, -0.8);
+  parent.add(cord);
+
+  // Bulb socket
+  const socketMat = new THREE.MeshLambertMaterial({ color: 0x2a2015 });
+  const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.02, 0.07, 8), socketMat);
+  socket.position.set(0.1, 1.79, -0.8);
+  parent.add(socket);
+
+  // Bulb glass
+  const bulbMat = new THREE.MeshLambertMaterial({
+    color: 0xfffce0, emissive: 0xffcc44, emissiveIntensity: 1.2,
+    transparent: true, opacity: 0.85
+  });
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.055, 16, 16), bulbMat);
+  bulb.position.set(0.1, 1.73, -0.8);
+  parent.add(bulb);
+
+  // The actual point light
+  const bulbLight = new THREE.PointLight(0xffe8a0, 1.8, 6.5);
+  bulbLight.position.set(0.1, 1.73, -0.8);
+  bulbLight.castShadow = true;
+  parent.add(bulbLight);
+}
+
+function buildBookshelves(parent) {
+  const shelfMat = new THREE.MeshLambertMaterial({ color: 0x1e1008 });
+
+  // Two large shelf units side by side on left wall
+  [-1.5, -0.1].forEach((xOff, unitIdx) => {
+    const unitW = 1.3, unitH = 2.7, unitD = 0.4;
+    const numShelves = 5;
+    const shelfThick = 0.04;
+
+    // Back panel
+    const backPanel = new THREE.Mesh(
+      new THREE.BoxGeometry(unitW, unitH, 0.03),
+      new THREE.MeshLambertMaterial({ color: 0x160c04 })
+    );
+    backPanel.position.set(xOff, unitH / 2, -2.7 + unitD / 2 + 0.015);
+    parent.add(backPanel);
+
+    // Side panels
+    [-unitW/2, unitW/2].forEach(sx => {
+      const side = new THREE.Mesh(new THREE.BoxGeometry(0.04, unitH, unitD), shelfMat);
+      side.position.set(xOff + sx, unitH / 2, -2.7 + unitD / 2);
+      parent.add(side);
+    });
+
+    // Horizontal shelves
+    for (let s = 0; s <= numShelves; s++) {
+      const y = (s / numShelves) * (unitH - 0.1) + 0.05;
+      const shelf = new THREE.Mesh(new THREE.BoxGeometry(unitW, shelfThick, unitD), shelfMat);
+      shelf.position.set(xOff, y, -2.7 + unitD / 2);
+      parent.add(shelf);
+
+      // Books on each shelf (except top & bottom)
+      if (s < numShelves) {
+        const slotH = (unitH / numShelves) - shelfThick;
+        const shelfY = y + slotH / 2 + shelfThick / 2;
+        buildBookRow(parent, xOff, shelfY, -2.7 + unitD / 2, unitW - 0.08, slotH - 0.02, unitIdx * 10 + s);
+      }
+    }
+  });
+
+  // Top boxes/clutter on shelves
+  const boxMat = new THREE.MeshLambertMaterial({ color: 0xd4a050 });
+  [[-1.5, 2.82, -2.45], [-0.1, 2.82, -2.45]].forEach(([x,y,z]) => {
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.28, 0.3), boxMat);
+    box.position.set(x, y, z);
+    parent.add(box);
+  });
+
+  // Stacked papers/manga on top
+  const paperMat = new THREE.MeshLambertMaterial({ color: 0xe8e0c8 });
+  const stack = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.3), paperMat);
+  stack.position.set(-1.5, 2.88, -2.4);
+  stack.rotation.z = 0.05;
+  parent.add(stack);
+}
+
+function buildBookRow(parent, x, y, z, width, maxH, seed) {
+  const rng = (n) => { let s = seed * 73 + n * 17; return ((Math.sin(s) * 9301 + 49297) % 233280) / 233280; };
+  const colors = [0xcc2222, 0x2244cc, 0x228833, 0xdd8800, 0xaa2288, 0x116688, 0xbbaa22, 0x884422, 0x336655, 0xcc6644];
+
+  let curX = x - width / 2 + 0.01;
+  let idx = 0;
+  while (curX < x + width / 2 - 0.02) {
+    const bw = 0.028 + rng(idx * 3) * 0.025;
+    const bh = maxH * (0.7 + rng(idx * 3 + 1) * 0.28);
+    const col = colors[Math.floor(rng(idx * 3 + 2) * colors.length)];
+
+    if (curX + bw > x + width / 2 - 0.01) break;
+
+    const bookMat = new THREE.MeshLambertMaterial({ color: col });
+    const book = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, 0.28), bookMat);
+    // Slight random tilt for some books
+    book.rotation.z = (rng(idx * 7) - 0.5) * 0.06;
+    book.position.set(curX + bw / 2, y - (maxH - bh) / 2, z);
+    parent.add(book);
+
+    // Spine color stripe
+    if (rng(idx) > 0.5) {
+      const stripeMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.01, 0.01), stripeMat);
+      stripe.position.set(curX + bw / 2, y - (maxH - bh) / 2 + bh * 0.3, z - 0.135);
+      parent.add(stripe);
+    }
+
+    curX += bw + 0.002;
+    idx++;
+  }
+}
+
+function buildStudyDesk(parent) {
+  const woodMat = new THREE.MeshLambertMaterial({ color: 0x2a1508 });
+
+  // Desk top
+  const deskTop = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.04, 0.7), woodMat);
+  deskTop.position.set(1.8, 0.62, -1.6);
+  deskTop.castShadow = true;
+  parent.add(deskTop);
+
+  // Legs
+  const legGeo = new THREE.BoxGeometry(0.06, 0.6, 0.06);
+  [[-0.75, 0.31, -0.3], [0.75, 0.31, -0.3], [-0.75, 0.31, 0.3], [0.75, 0.31, 0.3]].forEach(([dx,dy,dz]) => {
+    const leg = new THREE.Mesh(legGeo, woodMat);
+    leg.position.set(1.8 + dx, dy, -1.6 + dz);
+    parent.add(leg);
+  });
+
+  // Desk lamp
+  const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.04, 8),
+    new THREE.MeshLambertMaterial({ color: 0x222222 }));
+  lampBase.position.set(2.35, 0.66, -1.55);
+  parent.add(lampBase);
+  const lampArm = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.32, 0.015),
+    new THREE.MeshLambertMaterial({ color: 0x333333 }));
+  lampArm.position.set(2.35, 0.82, -1.55);
+  parent.add(lampArm);
+  const lampHead = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6, 0, Math.PI),
+    new THREE.MeshLambertMaterial({ color: 0x111111, side: THREE.DoubleSide }));
+  lampHead.position.set(2.2, 0.98, -1.55);
+  lampHead.rotation.z = -0.6;
+  parent.add(lampHead);
+  const deskLight = new THREE.PointLight(0xffeeaa, 0.6, 2.5);
+  deskLight.position.set(2.1, 0.95, -1.5);
+  parent.add(deskLight);
+
+  // Stacked books on desk
+  const bookColors = [0xcc3333, 0x3355aa, 0x228844, 0xdd7700];
+  bookColors.forEach((col, i) => {
+    const bk = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.03 + i * 0.005, 0.16),
+      new THREE.MeshLambertMaterial({ color: col }));
+    bk.position.set(1.5, 0.67 + i * 0.035, -1.55);
+    bk.rotation.y = (i - 1.5) * 0.08;
+    parent.add(bk);
+  });
+
+  // Pencil cup
+  const cupMat = new THREE.MeshLambertMaterial({ color: 0x445566 });
+  const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.03, 0.1, 10), cupMat);
+  cup.position.set(2.1, 0.69, -1.35);
+  parent.add(cup);
+
+  // Books stacked under desk
+  for (let i = 0; i < 3; i++) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.04, 0.18),
+      new THREE.MeshLambertMaterial({ color: [0x884422, 0xaabb33, 0x226688][i] }));
+    b.position.set(1.7 + i * 0.05, 0.02 + i * 0.04, -1.35);
+    b.rotation.y = i * 0.15;
+    parent.add(b);
+  }
+}
+
+function buildElectronics(parent) {
+  // Old CRT TV on floor
+  const crtMat = new THREE.MeshLambertMaterial({ color: 0x1a1510 });
+  const crtBody = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.45, 0.42), crtMat);
+  crtBody.position.set(0.5, 0.225, -2.1);
+  parent.add(crtBody);
+
+  // Screen (dark grey)
+  const screenMat = new THREE.MeshLambertMaterial({ color: 0x0a1520, emissive: 0x001520, emissiveIntensity: 0.3 });
+  const screen = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.33, 0.02), screenMat);
+  screen.position.set(0.5, 0.24, -1.89);
+  parent.add(screen);
+
+  // White appliance (rice cooker / mini fridge style)
+  const appMat = new THREE.MeshLambertMaterial({ color: 0xd8d2c2 });
+  const app = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.48, 0.3), appMat);
+  app.position.set(0.9, 0.24, -2.2);
+  parent.add(app);
+
+  // Coffee maker silhouette
+  const coffeeMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+  const coffeeBody = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.35, 10), coffeeMat);
+  coffeeBody.position.set(-0.1, 0.175, -2.2);
+  parent.add(coffeeBody);
+
+  // Pile of stuff behind TV (dark amorphous mass = bags/clothes)
+  const pileMat = new THREE.MeshLambertMaterial({ color: 0x0e0e12 });
+  const pile = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), pileMat);
+  pile.scale.set(1, 0.7, 0.8);
+  pile.position.set(0.2, 0.24, -2.55);
+  parent.add(pile);
+}
+
+function buildScatteredBooks(parent) {
+  const configs = [
+    { pos: [0.8, 0.02, 0.2], rot: 0.3, col: 0xcc3322, w: 0.24, h: 0.03, d: 0.18 },
+    { pos: [0.65, 0.05, 0.22], rot: 0.15, col: 0x4477aa, w: 0.22, h: 0.03, d: 0.16 },
+    { pos: [-0.5, 0.02, 1.2], rot: -0.5, col: 0x338855, w: 0.26, h: 0.025, d: 0.2 },
+    { pos: [-0.4, 0.045, 1.2], rot: -0.3, col: 0xddaa22, w: 0.24, h: 0.025, d: 0.18 },
+    { pos: [1.2, 0.02, 0.9], rot: 1.1, col: 0x882244, w: 0.2, h: 0.03, d: 0.15 },
+  ];
+  configs.forEach(({ pos, rot, col, w, h, d }) => {
+    const bk = new THREE.Mesh(new THREE.BoxGeometry(w, h, d),
+      new THREE.MeshLambertMaterial({ color: col }));
+    bk.position.set(...pos);
+    bk.rotation.y = rot;
+    parent.add(bk);
+  });
+}
+
+function buildGlassDome(parent) {
+  const domeGeo = new THREE.SphereGeometry(3.2, 48, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+  const domeMat = new THREE.MeshPhongMaterial({
+    color: 0x88aaff, emissive: 0x001122,
+    transparent: true, opacity: 0.06,
+    side: THREE.DoubleSide, shininess: 120, specular: 0xaaccff
+  });
+  const dome = new THREE.Mesh(domeGeo, domeMat);
+  dome.position.y = 2.9;
+  parent.add(dome);
+
+  // Thin metal ribs
+  const ribMat = new THREE.MeshLambertMaterial({ color: 0x2a1a0a, transparent: true, opacity: 0.5 });
+  for (let i = 0; i < 8; i++) {
+    const rib = new THREE.Mesh(new THREE.TorusGeometry(3.2, 0.018, 4, 32, Math.PI / 2), ribMat);
+    rib.position.y = 2.9;
+    rib.rotation.y = (i / 8) * Math.PI * 2;
+    rib.rotation.x = Math.PI / 2;
+    parent.add(rib);
+  }
+}
+
+// ─── Galaxy ───────────────────────────────────────────────────────────────────
+function buildGalaxy() {
+  galaxyGroup = new THREE.Group();
+  galaxyGroup.position.y = 3.2;
+
+  // Galaxy disc particles
+  const count = 1500;
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+
+  for (let i = 0; i < count; i++) {
+    const arm = Math.floor(Math.random() * 3);
+    const t = Math.random();
+    const angle = arm * (Math.PI * 2 / 3) + t * Math.PI * 4 + Math.random() * 0.5;
+    const radius = t * 2.5 + 0.1;
+    const spread = (1 - t) * 0.3;
+
+    positions[i * 3] = Math.cos(angle) * radius + (Math.random() - 0.5) * spread;
+    positions[i * 3 + 1] = (Math.random() - 0.5) * 0.2;
+    positions[i * 3 + 2] = Math.sin(angle) * radius + (Math.random() - 0.5) * spread;
+
+    const color = new THREE.Color();
+    const hue = 0.6 + (i % 20) * 0.005;
+    color.setHSL(hue, 0.6, 0.6 + (i % 30) * 0.01);
+    colors[i * 3] = color.r;
+    colors[i * 3 + 1] = color.g;
+    colors[i * 3 + 2] = color.b;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+  const mat = new THREE.PointsMaterial({
+    size: 0.02, vertexColors: true, transparent: true, opacity: 0.8, sizeAttenuation: true
+  });
+
+  galaxyGroup.add(new THREE.Points(geo, mat));
+  scene.add(galaxyGroup);
+}
+
+function buildStarField() {
+  const count = 2500;
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+
+  for (let i = 0; i < count; i++) {
+    const theta = (i * 0.618 + i * i * 0.1) * Math.PI * 2;
+    const phi = (i * 0.291 + i * i * 0.05) * Math.PI;
+    const r = 20 + (i * 0.618) * 30;
+    positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+    positions[i * 3 + 1] = r * Math.abs(Math.sin(phi)) + 2;
+    positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+
+    const c = new THREE.Color();
+    c.setHSL(Math.random(), 0.3, 0.7 + Math.random() * 0.3);
+    colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+  const mat = new THREE.PointsMaterial({ size: 0.04, vertexColors: true, transparent: true, opacity: 0.9, sizeAttenuation: true });
+  starField = new THREE.Points(geo, mat);
+  scene.add(starField);
+}
+
+function buildNebulaParticles() {
+  const count = 400;
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+
+  for (let i = 0; i < count; i++) {
+    const theta = (i * 0.618) * Math.PI * 2;
+    const r = (i * 0.291) * 3;
+    positions[i * 3] = Math.cos(theta) * r;
+    positions[i * 3 + 1] = 3.2 + (i * 0.05 - 0.5) * 0.8;
+    positions[i * 3 + 2] = Math.sin(theta) * r;
+
+    const hues = [0.8, 0.72, 0.65, 0.55];
+    const c = new THREE.Color();
+    const hueIdx = i % 4;
+    c.setHSL(hues[hueIdx], 0.7, 0.55 + (i % 20) * 0.015);
+    colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+  const mat = new THREE.PointsMaterial({ size: 0.06, vertexColors: true, transparent: true, opacity: 0.4, sizeAttenuation: true });
+  nebulaParticles = new THREE.Points(geo, mat);
+  scene.add(nebulaParticles);
+}
+
+function buildShootingStars() {
+  const count = 30;
+  const positions = new Float32Array(count * 3);
+
+  for (let i = 0; i < count; i++) {
+    positions[i * 3] = (Math.random() - 0.5) * 20;
+    positions[i * 3 + 1] = 2 + Math.random() * 3;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+  const mat = new THREE.PointsMaterial({ color: 0xaaddff, size: 0.025, transparent: true, opacity: 0.6, sizeAttenuation: true });
+  shootingStars = new THREE.Points(geo, mat);
+  shootingStars.userData = { 
+    nextShoot: 30 + Math.random() * 60,
+    index: 0,
+    vx: 0, vy: 0, vz: 0
+  };
+  scene.add(shootingStars);
+}
+
+function buildAsteroidBelt() {
+  const count = 300;
+  const positions = new Float32Array(count * 3);
+
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2 + i * 0.1;
+    const radius = 1.3 + (i % 10) * 0.02;
+    const height = (i * 0.07 - 0.5) * 0.15;
+    positions[i * 3] = Math.cos(angle) * radius;
+    positions[i * 3 + 1] = 2.6 + height;
+    positions[i * 3 + 2] = Math.sin(angle) * radius;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+  const mat = new THREE.PointsMaterial({ color: 0x887766, size: 0.015, transparent: true, opacity: 0.7, sizeAttenuation: true });
+  asteroidBelt = new THREE.Points(geo, mat);
+  scene.add(asteroidBelt);
+}
+
+function buildComet() {
+  const group = new THREE.Group();
+
+  const headGeo = new THREE.SphereGeometry(0.02, 8, 8);
+  const headMat = new THREE.MeshBasicMaterial({ color: 0xccffff, transparent: true, opacity: 0.9 });
+  const head = new THREE.Mesh(headGeo, headMat);
+  group.add(head);
+
+  const tailLen = 0.4;
+  const tailGeo = new THREE.ConeGeometry(0.015, tailLen, 6);
+  const tailMat = new THREE.MeshBasicMaterial({ color: 0x88ddff, transparent: true, opacity: 0.25 });
+  const tail = new THREE.Mesh(tailGeo, tailMat);
+  tail.rotation.x = Math.PI / 2;
+  tail.position.z = tailLen / 2;
+  group.add(tail);
+
+  group.position.set(-2, 3.5, 1);
+  group.userData = {
+    angle: 0,
+    radius: 3.2,
+    speed: 0.15,
+    tilt: 0.4
+  };
+  comet = group;
+  scene.add(comet);
+}
+
+// ─── Celestial Bodies ─────────────────────────────────────────────────────────
+function buildCelestialBodies() {
+  CELESTIAL_BODIES.forEach(body => {
+    const group = new THREE.Group();
+    const [x, y, z] = body.pos;
+    group.position.set(x, y, z);
+    group.userData = body;
+
+    // Main sphere
+    const geo = new THREE.SphereGeometry(body.size, 24, 24);
+    const mat = new THREE.MeshLambertMaterial({
+      color: body.color,
+      emissive: body.emissive,
+      emissiveIntensity: body.glow ? 0.8 : 0.2
+    });
+    const sphere = new THREE.Mesh(geo, mat);
+    sphere.castShadow = true;
+    group.add(sphere);
+
+    // Glow sprite
+    if (body.glow) {
+      const glowGeo = new THREE.SphereGeometry(body.size * 2.5, 16, 16);
+      const glowMat = new THREE.MeshBasicMaterial({
+        color: body.color,
+        transparent: true,
+        opacity: 0.08,
+        side: THREE.BackSide,
+        depthWrite: false
+      });
+      group.add(new THREE.Mesh(glowGeo, glowMat));
+
+      // Point light
+      const light = new THREE.PointLight(body.color, body.id === 'sun' ? 2 : 0.5, body.id === 'sun' ? 8 : 3);
+      group.add(light);
+    }
+
+    // Saturn's rings
+    if (body.ring) {
+      const ringGeo = new THREE.RingGeometry(body.size * 1.5, body.size * 2.5, 64);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0xd4c07a, side: THREE.DoubleSide, transparent: true, opacity: 0.6
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = Math.PI / 3;
+      group.add(ring);
+    }
+
+    // Vortex (black hole)
+    if (body.vortex) {
+      const vortexGeo = new THREE.RingGeometry(body.size * 1.2, body.size * 2.8, 48);
+      const vortexMat = new THREE.MeshBasicMaterial({
+        color: 0x8800ff, side: THREE.DoubleSide, transparent: true, opacity: 0.3
+      });
+      group.add(new THREE.Mesh(vortexGeo, vortexMat));
+    }
+
+    clickables.push(group);
+    scene.add(group);
+  });
+}
+
+// ─── Lighting ─────────────────────────────────────────────────────────────────
+function setupLighting() {
+  // Very dim ambient — room is lit mainly by the hanging bulb
+  const ambient = new THREE.AmbientLight(0x1a1208, 0.45);
+  scene.add(ambient);
+
+  // Weak galaxy glow from above
+  dayNightLight = new THREE.DirectionalLight(0x8899cc, 0.1);
+  dayNightLight.position.set(0, 5, 0);
+  scene.add(dayNightLight);
+
+  // Warm tatami bounce
+  const bounce = new THREE.PointLight(0xffcc66, 0.12, 4);
+  bounce.position.set(0, 0.1, 0);
+  scene.add(bounce);
+}
+
+// ─── Camera ───────────────────────────────────────────────────────────────────
+function updateCameraFromSpherical() {
+  const s = spherical;
+  const x = s.r * Math.sin(s.phi) * Math.sin(s.theta);
+  const y = s.r * Math.cos(s.phi) + 0.5;
+  const z = s.r * Math.sin(s.phi) * Math.cos(s.theta);
+  
+  // When not focused on something, orbit around center
+  if (!clickFocusActive || !focusTarget) {
+    camera.position.set(x, y, z);
+    camera.lookAt(0, 1.5, 0);
+  } else {
+    // When focused on a planet
+    camera.position.set(x, y, z);
+    camera.lookAt(cameraTarget);
+  }
+}
+
+function resetCamera() {
+  targetSpherical = { theta: 0.4, phi: 1.1, r: 5.5 };
+  clickFocusActive = false;
+  focusTarget = null;
+}
+
+function toggleView() {
+  isTopView = !isTopView;
+  const btn = document.getElementById('view-btn');
+  if (isTopView) {
+    targetSpherical = { theta: 0, phi: 0.05, r: 7 };
+    btn.textContent = '⊟ Side View';
+    btn.classList.add('active');
+  } else {
+    targetSpherical = { theta: 0.4, phi: 1.1, r: 5.5 };
+    btn.textContent = '⊞ Top View';
+    btn.classList.remove('active');
+  }
+  clickFocusActive = false;
+  focusTarget = null;
+}
+
+// ─── Day/Night ────────────────────────────────────────────────────────────────
+function toggleDayNight() {
+  isNight = !isNight;
+  const btn = document.getElementById('day-night-btn');
+  if (isNight) {
+    btn.textContent = '☽ Night';
+    btn.classList.remove('day');
+    dayNightLight.intensity = 0.1;
+    scene.fog.color.set(0x0a0612);
+    renderer.toneMappingExposure = 0.85;
+    if (starField) starField.material.opacity = 0.9;
+    if (nebulaParticles) nebulaParticles.material.opacity = 0.4;
+    galaxyGroup.children[0].material.opacity = 0.8;
+  } else {
+    btn.textContent = '☀ Day';
+    btn.classList.add('day');
+    dayNightLight.intensity = 0.8;
+    dayNightLight.color.set(0xfff8e8);
+    scene.fog.color.set(0x1a1210);
+    renderer.toneMappingExposure = 1.3;
+    if (starField) starField.material.opacity = 0.2;
+    if (nebulaParticles) nebulaParticles.material.opacity = 0.08;
+    galaxyGroup.children[0].material.opacity = 0.2;
+  }
+}
+
+// ─── Sound ────────────────────────────────────────────────────────────────────
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  const btn = document.getElementById('sound-btn');
+  btn.textContent = soundEnabled ? '♪ Sound On' : '♩ Sound Off';
+  btn.classList.toggle('active', soundEnabled);
+
+  if (soundEnabled) {
+    startAmbient();
+  } else {
+    stopAmbient();
+  }
+}
+
+function startAmbient() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  // Wind drone
+  const osc1 = audioCtx.createOscillator();
+  const gain1 = audioCtx.createGain();
+  osc1.type = 'sine'; osc1.frequency.value = 55;
+  gain1.gain.value = 0.04;
+  osc1.connect(gain1); gain1.connect(audioCtx.destination);
+  osc1.start();
+
+  // Cosmic hum
+  const osc2 = audioCtx.createOscillator();
+  const gain2 = audioCtx.createGain();
+  osc2.type = 'sine'; osc2.frequency.value = 110;
+  gain2.gain.value = 0.02;
+  osc2.connect(gain2); gain2.connect(audioCtx.destination);
+  osc2.start();
+
+  ambientNodes = [osc1, osc2, gain1, gain2];
+}
+
+function stopAmbient() {
+  ambientNodes.forEach(n => { try { n.stop && n.stop(); n.disconnect && n.disconnect(); } catch(e){} });
+  ambientNodes = [];
+}
+
+function playClickSound() {
+  if (!soundEnabled || !audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine'; osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15);
+  gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+}
+
+// ─── Info Panel ───────────────────────────────────────────────────────────────
+function showPanel(body) {
+  document.getElementById('panel-type').textContent = body.type;
+  document.getElementById('panel-name').textContent = body.name;
+  document.getElementById('panel-subtitle').textContent = body.subtitle;
+  document.getElementById('panel-desc').textContent = body.desc;
+
+  const statsEl = document.getElementById('panel-stats');
+  statsEl.innerHTML = Object.entries(body.stats).map(([k, v]) =>
+    `<div class="stat"><span class="stat-label">${k}</span><span class="stat-value">${v}</span></div>`
+  ).join('');
+
+  document.getElementById('info-panel').classList.add('visible');
+  playClickSound();
+}
+
+document.getElementById('close-panel').onclick = () => {
+  document.getElementById('info-panel').classList.remove('visible');
+  clickFocusActive = false;
+  focusTarget = null;
+};
+
+// ─── Events ───────────────────────────────────────────────────────────────────
+function setupEvents() {
+  const canvas = renderer.domElement;
+
+  canvas.addEventListener('mousedown', e => {
+    isDragging = false;
+    prevMouse = { x: e.clientX, y: e.clientY };
+    canvas.addEventListener('mousemove', onDrag);
+  });
+
+  canvas.addEventListener('mouseup', e => {
+    canvas.removeEventListener('mousemove', onDrag);
+    if (!isDragging) handleClick(e);
+    isDragging = false;
+  });
+
+  canvas.addEventListener('wheel', e => {
+    targetSpherical.r = Math.max(2.5, Math.min(10, targetSpherical.r + e.deltaY * 0.005));
+    isTopView = false;
+    document.getElementById('view-btn').textContent = '⊞ Top View';
+    document.getElementById('view-btn').classList.remove('active');
+    clickFocusActive = false;
+    focusTarget = null;
+  }, { passive: true });
+
+  canvas.addEventListener('mousemove', e => {
+    mouse.x = (e.clientX / innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / innerHeight) * 2 + 1;
+    checkHover(e);
+  });
+
+  // Touch
+  let touchStart = null;
+  canvas.addEventListener('touchstart', e => {
+    touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    prevMouse = touchStart;
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', e => {
+    const dx = e.touches[0].clientX - prevMouse.x;
+    const dy = e.touches[0].clientY - prevMouse.y;
+    targetSpherical.theta -= dx * 0.005;
+    targetSpherical.phi = Math.max(0.1, Math.min(Math.PI * 0.45, targetSpherical.phi + dy * 0.005));
+    prevMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    isDragging = true;
+  }, { passive: true });
+
+  window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+}
+
+function onDrag(e) {
+  isDragging = true;
+  const dx = e.clientX - prevMouse.x;
+  const dy = e.clientY - prevMouse.y;
+  targetSpherical.theta -= dx * 0.005;
+  targetSpherical.phi = Math.max(0.1, Math.min(Math.PI * 0.45, targetSpherical.phi + dy * 0.005));
+  prevMouse = { x: e.clientX, y: e.clientY };
+}
+
+function handleClick(e) {
+  const m = new THREE.Vector2(
+    (e.clientX / innerWidth) * 2 - 1,
+    -(e.clientY / innerHeight) * 2 + 1
+  );
+  raycaster.setFromCamera(m, camera);
+  const hits = raycaster.intersectObjects(clickables, true);
+  if (hits.length > 0) {
+    let obj = hits[0].object;
+    while (obj.parent && !obj.userData.id) obj = obj.parent;
+    if (obj.userData.id) {
+      showPanel(obj.userData);
+      clickFocusActive = true;
+      focusTarget = obj;
+    }
+  }
+}
+
+function checkHover(e) {
+  const m = new THREE.Vector2(
+    (e.clientX / innerWidth) * 2 - 1,
+    -(e.clientY / innerHeight) * 2 + 1
+  );
+  raycaster.setFromCamera(m, camera);
+  const hits = raycaster.intersectObjects(clickables, true);
+
+  const tooltip = document.getElementById('tooltip');
+  if (hits.length > 0) {
+    let obj = hits[0].object;
+    while (obj.parent && !obj.userData.id) obj = obj.parent;
+    if (obj.userData.id) {
+      tooltip.style.display = 'block';
+      tooltip.style.left = (e.clientX + 14) + 'px';
+      tooltip.style.top = (e.clientY - 8) + 'px';
+      tooltip.textContent = obj.userData.name + ' — ' + obj.userData.subtitle;
+      renderer.domElement.style.cursor = 'pointer';
+      hoveredObj = obj;
+      return;
+    }
+  }
+  tooltip.style.display = 'none';
+  renderer.domElement.style.cursor = 'crosshair';
+  hoveredObj = null;
+}
+
+// ─── Animate ──────────────────────────────────────────────────────────────────
+const tempVec = new THREE.Vector3();
+function animate() {
+  animFrame = requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  // Auto-orbit when idle
+  if (isIdle && !clickFocusActive) {
+    targetSpherical.theta += autoOrbitSpeed * 0.01;
+  }
+
+  // Smooth spherical interpolation
+  spherical.theta += (targetSpherical.theta - spherical.theta) * 0.08;
+  spherical.phi += (targetSpherical.phi - spherical.phi) * 0.08;
+  spherical.r += (targetSpherical.r - spherical.r) * 0.08;
+
+  // Zoom in when focused on planet
+  if (clickFocusActive && focusTarget) {
+    const targetR = 1.8;
+    spherical.r += (targetR - spherical.r) * 0.05;
+  }
+
+  updateCameraFromSpherical();
+
+  // Subtle rotation only
+  if (galaxyGroup) galaxyGroup.rotation.y = t * 0.02;
+  if (starField) starField.rotation.y = t * 0.001;
+  if (nebulaParticles) nebulaParticles.rotation.y = -t * 0.005;
+
+  // Animate celestial bodies
+  for (let i = 0; i < clickables.length; i++) {
+    const group = clickables[i];
+    const body = group.userData;
+    const offset = i * 0.8;
+    group.position.y = body.pos[1] + Math.sin(t * 0.5 + offset) * 0.03;
+    if (group.children[0]) group.children[0].rotation.y = t * (body.glow ? 0.3 : 0.1);
+    if (body.glow && group.children[0] && group.children[0].material) {
+      group.children[0].material.emissiveIntensity = 0.6 + Math.sin(t * 1.5 + offset) * 0.3;
+    }
+    if (body.vortex && group.children[1]) group.children[1].rotation.z = t * 0.8;
+    if (body.ring && group.children[1]) group.children[1].rotation.z = Math.sin(t * 0.3) * 0.05;
+    const targetScale = hoveredObj === group ? 1.15 : 1;
+    group.scale.x += (targetScale - group.scale.x) * 0.12;
+    group.scale.y = group.scale.z = group.scale.x;
+  }
+
+  // Stable opacity - no twinkle animation to prevent flickering
+  if (starField) {
+    starField.material.opacity = isNight ? 0.85 : 0.2;
+  }
+
+  // Animate shooting stars
+  if (shootingStars) {
+    const data = shootingStars.userData;
+    data.nextShoot -= 1;
+    if (data.nextShoot <= 0) {
+      data.index = (data.index + 1) % 30;
+      const positions = shootingStars.geometry.attributes.position.array;
+      const i = data.index;
+      positions[i * 3] = (Math.random() - 0.5) * 12 + 5;
+      positions[i * 3 + 1] = 3.5 + Math.random();
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 12;
+      data.vx = (Math.random() - 0.5) * 0.04;
+      data.vy = -0.02 - Math.random() * 0.03;
+      data.vz = (Math.random() - 0.5) * 0.04;
+      shootingStars.geometry.attributes.position.needsUpdate = true;
+      data.nextShoot = 25 + Math.random() * 50;
+    }
+    // Move active stars
+    const positions = shootingStars.geometry.attributes.position.array;
+    for (let i = 0; i < 30; i++) {
+      if (positions[i * 3 + 1] > 0) {
+        positions[i * 3] += data.vx;
+        positions[i * 3 + 1] += data.vy;
+        positions[i * 3 + 2] += data.vz;
+      }
+    }
+    shootingStars.geometry.attributes.position.needsUpdate = true;
+  }
+
+  // Animate asteroid belt rotation
+  if (asteroidBelt) {
+    asteroidBelt.rotation.y = t * 0.08;
+  }
+
+  // Animate comet orbit
+  if (comet) {
+    const c = comet.userData;
+    c.angle += c.speed * 0.016;
+    comet.position.x = Math.cos(c.angle) * c.radius;
+    comet.position.z = Math.sin(c.angle) * c.radius;
+    comet.position.y = 2.8 + Math.sin(c.angle * 2) * c.tilt;
+    comet.rotation.y = -c.angle + Math.PI / 2;
+  }
+
+  // Track idle state
+  if (!isDragging) {
+    idleTime += 0.016;
+    if (idleTime > 3) isIdle = true;
+  } else {
+    idleTime = 0;
+    isIdle = false;
+  }
+
+  renderer.render(scene, camera);
+}
+
+// ─── Bootstrap ───────────────────────────────────────────────────────────────
+window.addEventListener('load', init);
+window.toggleDayNight = toggleDayNight;
+window.toggleView = toggleView;
+window.toggleSound = toggleSound;
+window.resetCamera = resetCamera;
+</script>
+</body>
+</html>
